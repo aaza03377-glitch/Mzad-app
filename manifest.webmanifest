@@ -1,11 +1,11 @@
 {
   "id": "./",
-  "name": "نظام إدارة المزاد",
-  "short_name": "مزادي",
-  "description": "نظام مبسط لإدارة جلسات المزاد والبيعات والعملاء والمحافظ والتسويات والتقارير.",
+  "name": "نظام إدارة مزاد ركن الخرام",
+  "short_name": "ركن الخرام",
+  "description": "نظام إدارة جلسات المزاد والبيعات والعملاء والمحافظ والتسويات والتقارير.",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "./?source=pwa",
+  "start_url": "./?source=pwa&v=11",
   "scope": "./",
   "display": "standalone",
   "display_override": [
@@ -13,8 +13,8 @@
     "minimal-ui"
   ],
   "orientation": "any",
-  "background_color": "#f4f7f8",
-  "theme_color": "#16383b",
+  "background_color": "#332001",
+  "theme_color": "#332001",
   "categories": [
     "business",
     "finance",
@@ -23,16 +23,22 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "icons/icon-192.png",
+      "src": "icons/rk-icon-192-v11.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "icons/rk-icon-512-v11.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icons/rk-icon-512-v11.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
