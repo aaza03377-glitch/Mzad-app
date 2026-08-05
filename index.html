@@ -8,11 +8,11 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="ركن الخرام" />
-  <link rel="manifest" href="manifest.webmanifest?v=11" />
-  <link rel="apple-touch-icon" href="icons/rk-apple-touch-v11.png" />
-  <link rel="icon" type="image/png" sizes="64x64" href="icons/rk-favicon-v11.png" />
-  <title>نظام إدارة المزاد PWA V11</title>
+  <meta name="apple-mobile-web-app-title" content="ركن الكهرم" />
+  <link rel="manifest" href="manifest.webmanifest?v=12" />
+  <link rel="apple-touch-icon" href="icons/rk-apple-touch-v12.png" />
+  <link rel="icon" type="image/png" sizes="64x64" href="icons/rk-favicon-v12.png" />
+  <title>نظام إدارة المزاد PWA V12</title>
   <style>
 :root {
   --bg: #f5f7fb;
@@ -1417,7 +1417,7 @@ tbody tr:hover { background: #fafcff; }
 }
 
 
-/* شاشة افتتاحية ركن الخرام */
+/* شاشة افتتاحية ركن الكهرم */
 .app-splash {
   position: fixed;
   inset: 0;
@@ -1449,7 +1449,7 @@ tbody tr:hover { background: #fafcff; }
 </head>
 <body>
   <div id="appSplash" class="app-splash" aria-hidden="true">
-    <img src="assets/rk-splash-v11.png" alt="" />
+    <img src="assets/rk-splash-v12.png" alt="" />
   </div>
   <div class="app-shell">
     <header class="topbar">
@@ -1458,10 +1458,10 @@ tbody tr:hover { background: #fafcff; }
         <div id="brandLogo" class="brand-logo">م</div>
         <div>
           <h1 id="brandName">مزادي</h1>
-          <small>نظام إدارة المزاد PWA V11</small>
+          <small>نظام إدارة المزاد PWA V12</small>
         </div>
       </div>
-      <button id="installAppBtn" class="install-app-btn hidden" type="button" aria-label="تثبيت التطبيق">تثبيت التطبيق</button>
+      <button id="installAppBtn" class="install-app-btn" type="button" aria-label="تثبيت التطبيق">تثبيت التطبيق</button>
       <button id="quickSaleBtn" class="primary compact hidden">+ بيعة</button>
     </header>
 
@@ -1536,7 +1536,7 @@ tbody tr:hover { background: #fafcff; }
 
   function defaultState() {
     return {
-      version: 11,
+      version: 12,
       settings: {
         auctionName: 'مزادي',
         currency: 'ر.ق',
@@ -1691,7 +1691,7 @@ tbody tr:hover { background: #fafcff; }
     return {
       ...base,
       ...source,
-      version: 11,
+      version: 12,
       settings,
       sessions: Array.isArray(source.sessions) ? source.sessions : [],
       customers: deduped.customers,
@@ -3916,7 +3916,23 @@ tbody tr:hover { background: #fafcff; }
   let refreshing = false;
   let registrationRef = null;
 
-  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const isStandalone = () =>
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  const isAndroidChrome = () => {
+    const ua = navigator.userAgent || '';
+    return /Android/i.test(ua) && /(Chrome|CriOS|EdgA)/i.test(ua);
+  };
+
+  function refreshInstallButton() {
+    if (!installButton) return;
+    if (isStandalone()) {
+      hideInstallButton();
+    } else {
+      showInstallButton();
+    }
+  }
 
   function hideInstallButton() {
     if (installButton) installButton.classList.add('hidden');
@@ -3954,9 +3970,15 @@ tbody tr:hover { background: #fafcff; }
       return;
     }
     if (!deferredPrompt) {
+      const secureHint = window.isSecureContext
+        ? ''
+        : ' يجب فتح الموقع عبر HTTPS حتى يعمل تثبيت التطبيق.';
+      const browserHint = isAndroidChrome()
+        ? 'افتح قائمة Chrome ذات النقاط الثلاث ثم اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية». إذا كانت نسخة قديمة مثبتة، احذفها من الهاتف ثم أعد فتح الرابط.'
+        : 'افتح الرابط في Google Chrome مباشرة، ثم من قائمة Chrome اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».';
       showNotice(
-        'تثبيت التطبيق',
-        'من قائمة Chrome اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية»، ثم افتحه من الأيقونة.',
+        'تثبيت تطبيق ركن الكهرم',
+        browserHint + secureHint,
         '',
         null
       );
@@ -3976,23 +3998,25 @@ tbody tr:hover { background: #fafcff; }
   window.addEventListener('beforeinstallprompt', event => {
     event.preventDefault();
     deferredPrompt = event;
-    showInstallButton();
+    refreshInstallButton();
   });
 
   window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
     hideInstallButton();
-    showNotice('تم تثبيت التطبيق', 'يمكنك الآن فتح نظام المزاد من أيقونته دون شريط المتصفح.', '', null);
+    showNotice('تم تثبيت التطبيق', 'يمكنك الآن فتح تطبيق ركن الكهرم من أيقونته دون شريط المتصفح.', '', null);
     window.setTimeout(closeNotice, 4500);
   });
 
   installButton?.addEventListener('click', requestInstall);
-  if (isStandalone()) hideInstallButton();
+  refreshInstallButton();
+  window.addEventListener('pageshow', refreshInstallButton);
+  window.matchMedia('(display-mode: standalone)').addEventListener?.('change', refreshInstallButton);
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
       try {
-        const registration = await navigator.serviceWorker.register('./sw.js?v=11', { scope: './' });
+        const registration = await navigator.serviceWorker.register('./sw.js?v=12', { scope: './' });
         registrationRef = registration;
 
         if (registration.waiting && navigator.serviceWorker.controller) {

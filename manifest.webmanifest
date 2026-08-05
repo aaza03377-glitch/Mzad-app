@@ -1,11 +1,11 @@
 {
   "id": "./",
-  "name": "نظام إدارة مزاد ركن الخرام",
-  "short_name": "ركن الخرام",
-  "description": "نظام إدارة جلسات المزاد والبيعات والعملاء والمحافظ والتسويات والتقارير.",
+  "name": "نظام إدارة مزاد ركن الكهرم",
+  "short_name": "ركن الكهرم",
+  "description": "نظام إدارة جلسات مزاد ركن الكهرم والبيعات والعملاء والمحافظ والتسويات والتقارير.",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "./?source=pwa&v=11",
+  "start_url": "./?source=pwa&v=12",
   "scope": "./",
   "display": "standalone",
   "display_override": [
@@ -23,19 +23,19 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "icons/rk-icon-192-v11.png",
+      "src": "icons/rk-icon-192-v12.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/rk-icon-512-v11.png",
+      "src": "icons/rk-icon-512-v12.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/rk-icon-512-v11.png",
+      "src": "icons/rk-icon-512-v12.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

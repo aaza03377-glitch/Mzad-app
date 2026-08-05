@@ -1,13 +1,13 @@
-const CACHE_NAME = 'auction-pwa-v11-rk-branding';
+const CACHE_NAME = 'auction-pwa-v12-rk-install-fix';
 const APP_SHELL = [
   './',
   './index.html',
-  './manifest.webmanifest?v=11',
-  './icons/rk-icon-192-v11.png',
-  './icons/rk-icon-512-v11.png',
-  './icons/rk-apple-touch-v11.png',
-  './icons/rk-favicon-v11.png',
-  './assets/rk-splash-v11.png'
+  './manifest.webmanifest?v=12',
+  './icons/rk-icon-192-v12.png',
+  './icons/rk-icon-512-v12.png',
+  './icons/rk-apple-touch-v12.png',
+  './icons/rk-favicon-v12.png',
+  './assets/rk-splash-v12.png'
 ];
 
 self.addEventListener('install', event => {
