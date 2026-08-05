@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#16383b" />
+  <meta name="theme-color" content="#332001" />
   <meta name="description" content="نظام إدارة المزاد والجلسات والبيعات والعملاء والمحافظ والتسويات والتقارير" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="مزادي" />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <title>نظام إدارة المزاد PWA V10</title>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ركن الخرام" />
+  <link rel="manifest" href="manifest.webmanifest?v=11" />
+  <link rel="apple-touch-icon" href="icons/rk-apple-touch-v11.png" />
+  <link rel="icon" type="image/png" sizes="64x64" href="icons/rk-favicon-v11.png" />
+  <title>نظام إدارة المزاد PWA V11</title>
   <style>
 :root {
   --bg: #f5f7fb;
@@ -1416,9 +1416,41 @@ tbody tr:hover { background: #fafcff; }
   .customer-stat:last-child { grid-column: span 2; }
 }
 
+
+/* شاشة افتتاحية ركن الخرام */
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: grid;
+  place-items: center;
+  background: #332001;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .48s ease, visibility .48s ease;
+}
+.app-splash img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  object-position: center;
+}
+.app-splash.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-splash { transition: none; }
+}
+
 </style>
 </head>
 <body>
+  <div id="appSplash" class="app-splash" aria-hidden="true">
+    <img src="assets/rk-splash-v11.png" alt="" />
+  </div>
   <div class="app-shell">
     <header class="topbar">
       <button id="menuBtn" class="icon-btn" aria-label="فتح القائمة">☰</button>
@@ -1426,7 +1458,7 @@ tbody tr:hover { background: #fafcff; }
         <div id="brandLogo" class="brand-logo">م</div>
         <div>
           <h1 id="brandName">مزادي</h1>
-          <small>نظام إدارة المزاد PWA V10</small>
+          <small>نظام إدارة المزاد PWA V11</small>
         </div>
       </div>
       <button id="installAppBtn" class="install-app-btn hidden" type="button" aria-label="تثبيت التطبيق">تثبيت التطبيق</button>
@@ -1456,6 +1488,28 @@ tbody tr:hover { background: #fafcff; }
   <div id="toastRoot" class="toast-root"></div>
 
   <script>
+
+(function setupRKSplashScreen() {
+  const splash = document.getElementById('appSplash');
+  if (!splash) return;
+
+  let hidden = false;
+  const hideSplash = () => {
+    if (hidden) return;
+    hidden = true;
+    window.setTimeout(() => {
+      splash.classList.add('is-hidden');
+      window.setTimeout(() => splash.remove(), 550);
+    }, 700);
+  };
+
+  if (document.readyState === 'complete') hideSplash();
+  else window.addEventListener('load', hideSplash, { once: true });
+
+  // حماية من بقاء الشاشة عند تعذر تحميل مورد ما.
+  window.setTimeout(hideSplash, 2600);
+})();
+
 (function () {
   'use strict';
 
@@ -1482,7 +1536,7 @@ tbody tr:hover { background: #fafcff; }
 
   function defaultState() {
     return {
-      version: 10,
+      version: 11,
       settings: {
         auctionName: 'مزادي',
         currency: 'ر.ق',
@@ -1637,7 +1691,7 @@ tbody tr:hover { background: #fafcff; }
     return {
       ...base,
       ...source,
-      version: 10,
+      version: 11,
       settings,
       sessions: Array.isArray(source.sessions) ? source.sessions : [],
       customers: deduped.customers,
@@ -3938,7 +3992,7 @@ tbody tr:hover { background: #fafcff; }
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
       try {
-        const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+        const registration = await navigator.serviceWorker.register('./sw.js?v=11', { scope: './' });
         registrationRef = registration;
 
         if (registration.waiting && navigator.serviceWorker.controller) {
