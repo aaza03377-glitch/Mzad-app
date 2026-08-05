@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>فحص تثبيت ركن الكهرم</title>
+<style>
+body{font-family:Tahoma,Arial,sans-serif;background:#f6f2eb;color:#2c1b08;margin:0;padding:20px}
+.card{max-width:720px;margin:auto;background:#fff;border-radius:18px;padding:20px;box-shadow:0 10px 30px #0001}
+.row{padding:12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;gap:12px}
+.ok{color:#15803d;font-weight:700}.bad{color:#b91c1c;font-weight:700}
+button{margin-top:16px;padding:12px 18px;border:0;border-radius:12px;background:#5a3507;color:white;font-weight:700}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>فحص PWA — ركن الكهرم V13</h1>
+<div id="results">جارٍ الفحص...</div>
+<button onclick="location.reload()">إعادة الفحص</button>
+</div>
+<script>
+(async()=>{
+ const tests=[
+  ['اتصال آمن HTTPS',()=>location.protocol==='https:'],
+  ['دعم Service Worker',()=>('serviceWorker' in navigator)],
+  ['ملف Manifest',async()=> (await fetch('./manifest.webmanifest?v=13',{cache:'no-store'})).ok],
+  ['أيقونة 192',async()=> (await fetch('./icon/rk-icon-192-v12.png',{cache:'no-store'})).ok],
+  ['أيقونة 512',async()=> (await fetch('./icon/rk-icon-512-v12.png',{cache:'no-store'})).ok],
+  ['الشاشة الافتتاحية',async()=> (await fetch('./assets/rk-splash-v12.png',{cache:'no-store'})).ok],
+ ];
+ let html='';
+ for(const [name,test] of tests){
+   try{
+     const ok=await test();
+     html+=`<div class="row"><span>${name}</span><span class="${ok?'ok':'bad'}">${ok?'سليم':'غير سليم'}</span></div>`;
+   }catch(e){
+     html+=`<div class="row"><span>${name}</span><span class="bad">فشل</span></div>`;
+   }
+ }
+ if('serviceWorker' in navigator){
+   try{
+     await navigator.serviceWorker.register('./sw.js?v=13',{scope:'./'});
+     html+=`<div class="row"><span>تسجيل Service Worker</span><span class="ok">نجح</span></div>`;
+   }catch(e){
+     html+=`<div class="row"><span>تسجيل Service Worker</span><span class="bad">فشل: ${e.message}</span></div>`;
+   }
+ }
+ document.getElementById('results').innerHTML=html;
+})();
+</script>
+</body>
+</html>

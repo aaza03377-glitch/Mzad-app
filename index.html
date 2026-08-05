@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="ركن الكهرم" />
-  <link rel="manifest" href="manifest.webmanifest?v=12" />
-  <link rel="apple-touch-icon" href="icons/rk-apple-touch-v12.png" />
-  <link rel="icon" type="image/png" sizes="64x64" href="icons/rk-favicon-v12.png" />
-  <title>نظام إدارة المزاد PWA V12</title>
+  <link rel="manifest" href="manifest.webmanifest?v=13" />
+  <link rel="apple-touch-icon" href="icon/rk-apple-touch-v12.png" />
+  <link rel="icon" type="image/png" sizes="64x64" href="icon/rk-favicon-v12.png" />
+  <title>نظام إدارة المزاد PWA V13</title>
   <style>
 :root {
   --bg: #f5f7fb;
@@ -1458,7 +1458,7 @@ tbody tr:hover { background: #fafcff; }
         <div id="brandLogo" class="brand-logo">م</div>
         <div>
           <h1 id="brandName">مزادي</h1>
-          <small>نظام إدارة المزاد PWA V12</small>
+          <small>نظام إدارة المزاد PWA V13</small>
         </div>
       </div>
       <button id="installAppBtn" class="install-app-btn" type="button" aria-label="تثبيت التطبيق">تثبيت التطبيق</button>
@@ -1536,7 +1536,7 @@ tbody tr:hover { background: #fafcff; }
 
   function defaultState() {
     return {
-      version: 12,
+      version: 13,
       settings: {
         auctionName: 'مزادي',
         currency: 'ر.ق',
@@ -1691,7 +1691,7 @@ tbody tr:hover { background: #fafcff; }
     return {
       ...base,
       ...source,
-      version: 12,
+      version: 13,
       settings,
       sessions: Array.isArray(source.sessions) ? source.sessions : [],
       customers: deduped.customers,
@@ -4016,7 +4016,7 @@ tbody tr:hover { background: #fafcff; }
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
       try {
-        const registration = await navigator.serviceWorker.register('./sw.js?v=12', { scope: './' });
+        const registration = await navigator.serviceWorker.register('./sw.js?v=13', { scope: './' });
         registrationRef = registration;
 
         if (registration.waiting && navigator.serviceWorker.controller) {

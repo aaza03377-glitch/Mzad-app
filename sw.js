@@ -1,19 +1,31 @@
-const CACHE_NAME = 'auction-pwa-v12-rk-install-fix';
+const CACHE_NAME = 'auction-pwa-v13-rk-repo-path-fix';
+
 const APP_SHELL = [
   './',
   './index.html',
-  './manifest.webmanifest?v=12',
-  './icons/rk-icon-192-v12.png',
-  './icons/rk-icon-512-v12.png',
-  './icons/rk-apple-touch-v12.png',
-  './icons/rk-favicon-v12.png',
+  './manifest.webmanifest?v=13',
+  './icon/rk-icon-192-v12.png',
+  './icon/rk-icon-512-v12.png',
+  './icon/rk-apple-touch-v12.png',
+  './icon/rk-favicon-v12.png',
   './assets/rk-splash-v12.png'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
+      .then(async cache => {
+        const results = await Promise.allSettled(
+          APP_SHELL.map(url => cache.add(url))
+        );
+        const failed = results
+          .map((result, index) => ({ result, url: APP_SHELL[index] }))
+          .filter(item => item.result.status === 'rejected');
+
+        if (failed.length) {
+          console.warn('[PWA V13] Some optional files were not cached:', failed);
+        }
+      })
       .then(() => self.skipWaiting())
   );
 });
@@ -29,11 +41,14 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('message', event => {
-  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', event => {
   const request = event.request;
+
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
@@ -43,26 +58,29 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(request)
         .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
+          if (response && response.ok) {
+            caches.open(CACHE_NAME)
+              .then(cache => cache.put('./index.html', response.clone()));
+          }
           return response;
         })
-        .catch(async () => (await caches.match('./index.html')) || (await caches.match('./')))
+        .catch(async () =>
+          (await caches.match('./index.html')) ||
+          (await caches.match('./'))
+        )
     );
     return;
   }
 
   event.respondWith(
-    caches.match(request).then(cached => {
-      const network = fetch(request)
-        .then(response => {
-          if (response && response.ok) {
-            caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+    fetch(request)
+      .then(response => {
+        if (response && response.ok) {
+          caches.open(CACHE_NAME)
+            .then(cache => cache.put(request, response.clone()));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request))
   );
 });
