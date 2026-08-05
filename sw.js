@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auction-pwa-v10-single';
+const CACHE_NAME = 'auction-pwa-v11-single';
 const APP_SHELL = [
   './',
   './index.html',
