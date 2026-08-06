@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="ركن الكهرم" />
-  <link rel="manifest" href="manifest.webmanifest?v=13" />
+  <link rel="manifest" href="manifest.webmanifest?v=14" />
   <link rel="apple-touch-icon" href="icon/rk-apple-touch-v12.png" />
   <link rel="icon" type="image/png" sizes="64x64" href="icon/rk-favicon-v12.png" />
-  <title>نظام إدارة المزاد PWA V13</title>
+  <title>نظام إدارة المزاد PWA V14</title>
   <style>
 :root {
   --bg: #f5f7fb;
@@ -1445,6 +1445,31 @@ tbody tr:hover { background: #fafcff; }
   .app-splash { transition: none; }
 }
 
+
+
+/* توزيع التحصيل والتسوية على الجلسات والبيعات */
+.payment-total-grid { gap: 12px; }
+.selected-payment-box { border-color: #b9d8ce; background: #f2fbf7; }
+.allocation-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
+.allocation-toolbar label { display: block; font-weight: 800; margin-bottom: 4px; }
+.payment-allocation-list { display: grid; gap: 10px; max-height: 46vh; overflow: auto; padding: 2px; }
+.payment-allocation-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(120px, .55fr) minmax(170px, .75fr); gap: 12px; align-items: center; padding: 13px; border: 1px solid #dfe7ea; border-radius: 14px; background: #fff; }
+.payment-allocation-row:focus-within { border-color: #78aa9b; box-shadow: 0 0 0 3px rgba(64, 124, 106, .10); }
+.payment-allocation-info { min-width: 0; }
+.payment-allocation-info strong, .payment-allocation-info small { display: block; }
+.payment-allocation-info small { color: var(--muted); margin: 4px 0 7px; }
+.payment-allocation-due { text-align: center; padding: 8px 10px; border-radius: 10px; background: var(--surface-soft); }
+.payment-allocation-due small, .payment-allocation-due strong { display: block; }
+.payment-allocation-input label { display: block; font-size: .78rem; color: var(--muted); margin-bottom: 5px; }
+.payment-allocation-input input { font-weight: 800; }
+.notice.warning { padding: 14px 16px; border: 1px solid #efd99e; border-radius: 14px; background: #fff9e9; }
+.notice.warning p { margin: 6px 0 0; color: #6f571d; }
+@media (max-width: 760px) {
+  .allocation-toolbar { align-items: stretch; flex-direction: column; }
+  .payment-allocation-row { grid-template-columns: 1fr 1fr; }
+  .payment-allocation-info { grid-column: 1 / -1; }
+}
+
 </style>
 </head>
 <body>
@@ -1458,7 +1483,7 @@ tbody tr:hover { background: #fafcff; }
         <div id="brandLogo" class="brand-logo">م</div>
         <div>
           <h1 id="brandName">مزادي</h1>
-          <small>نظام إدارة المزاد PWA V13</small>
+          <small>نظام إدارة المزاد PWA V14</small>
         </div>
       </div>
       <button id="installAppBtn" class="install-app-btn" type="button" aria-label="تثبيت التطبيق">تثبيت التطبيق</button>
@@ -1536,7 +1561,7 @@ tbody tr:hover { background: #fafcff; }
 
   function defaultState() {
     return {
-      version: 13,
+      version: 14,
       settings: {
         auctionName: 'مزادي',
         currency: 'ر.ق',
@@ -1691,7 +1716,7 @@ tbody tr:hover { background: #fafcff; }
     return {
       ...base,
       ...source,
-      version: 13,
+      version: 14,
       settings,
       sessions: Array.isArray(source.sessions) ? source.sessions : [],
       customers: deduped.customers,
@@ -1907,7 +1932,11 @@ tbody tr:hover { background: #fafcff; }
   }
 
   function getReversalForSale(saleId) {
-    return state.saleReversals.find(item => item.saleId === saleId);
+    return [...state.saleReversals].reverse().find(item => item.saleId === saleId && item.status !== 'undone');
+  }
+
+  function reversalHistoryForSale(saleId) {
+    return state.saleReversals.filter(item => item.saleId === saleId);
   }
 
   function adjustmentAllocated(adjustmentId) {
@@ -2104,6 +2133,77 @@ tbody tr:hover { background: #fafcff; }
         }
       }
     });
+  }
+
+  function paymentAllocationCandidates(kind, customerId) {
+    const saleCandidates = state.sales
+      .filter(isActiveSale)
+      .filter(sale => kind === 'buyer_collection'
+        ? customerObligationForSale(sale, customerId) > 0
+        : sale.sellerId === customerId)
+      .map(sale => ({
+        type: 'sale', id: sale.id, sale,
+        due: kind === 'buyer_collection' ? customerDueForSale(sale, customerId) : sellerDueForSale(sale),
+        date: getSession(sale.sessionId)?.date || sale.createdAt,
+        title: getSession(sale.sessionId)?.name || 'جلسة غير معروفة',
+        subtitle: sale.item
+      }))
+      .filter(item => item.due > 0.001);
+
+    const adjustmentCandidates = kind === 'buyer_collection'
+      ? state.customerAdjustments
+          .filter(item => item.customerId === customerId && adjustmentDue(item) > 0.001)
+          .map(item => ({
+            type: 'adjustment', id: item.id, adjustment: item,
+            due: adjustmentDue(item), date: item.date || item.createdAt,
+            title: 'مبلغ إضافي على العميل',
+            subtitle: item.description || 'تسوية مالية أخرى'
+          }))
+      : [];
+
+    return [...saleCandidates, ...adjustmentCandidates]
+      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  }
+
+  function paymentAllocationRows(candidates) {
+    return candidates.map((item, index) => {
+      const sale = item.sale;
+      const session = sale ? getSession(sale.sessionId) : null;
+      const defaultValue = index === 0 ? item.due : 0;
+      return `<div class="payment-allocation-row" data-payment-allocation-row data-type="${item.type}" data-id="${item.id}" data-due="${item.due}">
+        <div class="payment-allocation-info">
+          <strong>${esc(item.title)}</strong>
+          <small>${esc(item.subtitle)}${session ? ` • ${dateText(session.date)}` : ''}</small>
+          ${sale ? `<span class="badge ${saleStatus(sale).cls}">${saleStatus(sale).text}</span>` : '<span class="badge warning">مبلغ إضافي</span>'}
+        </div>
+        <div class="payment-allocation-due"><small>المتبقي</small><strong>${money(item.due)}</strong></div>
+        <div class="payment-allocation-input">
+          <label>المخصص لهذه العملية</label>
+          <input class="payment-allocation-amount" type="number" inputmode="decimal" min="0" max="${item.due}" step="0.01" value="${defaultValue}" />
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function readManualPaymentAllocations(root) {
+    const allocations = [];
+    let total = 0;
+    let error = '';
+    root.querySelectorAll('[data-payment-allocation-row]').forEach(row => {
+      const due = num(row.dataset.due);
+      const amount = Math.max(0, round(row.querySelector('.payment-allocation-amount')?.value));
+      if (amount > due + 0.001) {
+        error = 'أحد المبالغ المخصصة أكبر من المتبقي على البيعة';
+        return;
+      }
+      if (amount <= 0.001) return;
+      const item = { amount };
+      if (row.dataset.type === 'adjustment') item.adjustmentId = row.dataset.id;
+      else item.saleId = row.dataset.id;
+      allocations.push(item);
+      total = round(total + amount);
+    });
+    return { allocations, total, error };
   }
 
   function autoAllocate(kind, customerId, amount) {
@@ -2793,6 +2893,64 @@ tbody tr:hover { background: #fafcff; }
     return total;
   }
 
+  function snapshotNettingsForSale(saleId) {
+    return state.nettings
+      .filter(netting => allocationSum(netting.buyerAllocations, saleId) > 0 || allocationSum(netting.sellerAllocations, saleId) > 0)
+      .map(netting => JSON.parse(JSON.stringify(netting)));
+  }
+
+  function restoreNettingSnapshots(snapshots) {
+    (snapshots || []).forEach(snapshot => {
+      state.nettings = state.nettings.filter(item => item.id !== snapshot.id);
+      state.nettings.push(JSON.parse(JSON.stringify(snapshot)));
+    });
+  }
+
+  function restoreLegacyNettingForReversal(sale, amount) {
+    let remaining = Math.max(0, round(amount));
+    if (remaining <= 0) return 0;
+    let restored = 0;
+    const debtorIds = [...new Set([sale.buyerId, ...saleFarqiyas(sale).map(item => item.payerId)].filter(Boolean))];
+
+    for (const customerId of debtorIds) {
+      if (remaining <= 0) break;
+      const buyerDueOnSale = customerDueForSale(sale, customerId);
+      const sellerDue = customerSellerDue(customerId);
+      const value = Math.min(remaining, buyerDueOnSale, sellerDue);
+      if (value <= 0) continue;
+      const sellerSide = autoAllocate('seller_payout', customerId, value);
+      if (sellerSide.remaining > 0.001) continue;
+      state.nettings.push({
+        id: Store.uid('net'), customerId, amount: value,
+        buyerAllocations: [{ saleId: sale.id, amount: value }],
+        sellerAllocations: sellerSide.allocations,
+        restoredFromReversal: true, date: new Date().toISOString()
+      });
+      remaining = round(remaining - value);
+      restored = round(restored + value);
+    }
+
+    if (remaining > 0 && sale.sellerId) {
+      const customerId = sale.sellerId;
+      const sellerDueOnSale = sellerDueForSale(sale);
+      const buyerDue = customerBuyerDue(customerId);
+      const value = Math.min(remaining, sellerDueOnSale, buyerDue);
+      if (value > 0) {
+        const buyerSide = autoAllocate('buyer_collection', customerId, value);
+        if (buyerSide.remaining <= 0.001) {
+          state.nettings.push({
+            id: Store.uid('net'), customerId, amount: value,
+            buyerAllocations: buyerSide.allocations,
+            sellerAllocations: [{ saleId: sale.id, amount: value }],
+            restoredFromReversal: true, date: new Date().toISOString()
+          });
+          restored = round(restored + value);
+        }
+      }
+    }
+    return restored;
+  }
+
   function distributeWalletRefund(items, targetAmount) {
     let remaining = round(targetAmount);
     return items.map(item => {
@@ -2896,6 +3054,7 @@ tbody tr:hover { background: #fafcff; }
             walletId: item.walletId, direction: 'out', amount: item.walletAmount,
             description: `رد مبلغ للعميل بسبب ${label}: ${sale.item}`, refType: 'sale_reversal', refId: reversalId
           }));
+          const nettingSnapshots = snapshotNettingsForSale(saleId);
           const unwound = unwindNettingsForSale(saleId);
           let adjustmentId = null;
           const adjustmentAmount = round(calculation.retainedCore + calculation.retainedGatewayFee);
@@ -2912,7 +3071,7 @@ tbody tr:hover { background: #fafcff; }
             nettingAmount: unwound, retainedCommission: calculation.retainedCommission,
             retainedDelivery: calculation.retainedDelivery, retainedGatewayFee: calculation.retainedGatewayFee,
             customDeduction: calculation.customDeduction, outstandingBuyerCharge: calculation.outstandingBuyerCharge,
-            buyerAdjustmentId: adjustmentId, date: new Date().toISOString()
+            buyerAdjustmentId: adjustmentId, nettingSnapshots, status: 'active', date: new Date().toISOString()
           });
           sale.status = type; sale.reversalId = reversalId; sale.reversedAt = new Date().toISOString();
           persist(`تم ${label} البيعة وتسجيل جميع الآثار المالية`); closeModal(); renderSessionDetails();
@@ -2921,10 +3080,86 @@ tbody tr:hover { background: #fafcff; }
     });
   }
 
+  function undoSaleReversal(saleId) {
+    const sale = getSale(saleId);
+    const reversal = getReversalForSale(saleId);
+    if (!sale || !reversal || isActiveSale(sale)) return toast('لا توجد عملية إرجاع أو إلغاء فعالة للتراجع عنها', 'error');
+
+    const adjustment = reversal.buyerAdjustmentId ? state.customerAdjustments.find(item => item.id === reversal.buyerAdjustmentId) : null;
+    if (adjustment && adjustmentAllocated(adjustment.id) > 0.001) {
+      return toast('لا يمكن التراجع تلقائياً لأن مبلغ المرتجع ارتبط بتحصيل أو مقاصة لاحقة', 'error');
+    }
+
+    const incomingByWallet = groupByWallet(reversal.refunds || []);
+    const outgoingByWallet = groupByWallet(reversal.recoveries || []);
+    for (const walletId of new Set([...Object.keys(incomingByWallet), ...Object.keys(outgoingByWallet)])) {
+      const availableAfterCollection = round(walletBalance(walletId) + num(incomingByWallet[walletId]));
+      if (availableAfterCollection + 0.001 < num(outgoingByWallet[walletId])) {
+        return toast(`رصيد محفظة ${getWallet(walletId)?.name || ''} غير كافٍ لإعادة تسويات الأطراف`, 'error');
+      }
+    }
+
+    const label = reversal.type === 'returned' ? 'الإرجاع' : 'الإلغاء';
+    const refundTotal = round((reversal.refunds || []).reduce((sum, item) => sum + num(item.walletAmount || item.amount), 0));
+    const recoveryTotal = round((reversal.recoveries || []).reduce((sum, item) => sum + num(item.walletAmount || item.amount), 0));
+    modal({
+      title: `التراجع عن ${label}`,
+      wide: true,
+      body: `<div class="grid grid-3">
+        ${metric('المطلوب استعادته من العملاء', money(refundTotal), 'عكس المبالغ التي تم ردها')}
+        ${metric('إعادة تسويات الأطراف', money(recoveryTotal), 'البائع وشركة التوصيل إن وجدت')}
+        ${metric('المقاصة التي ستُستعاد', money(reversal.nettingAmount || 0), 'حسب سجل العملية الأصلي')}
+      </div>
+      <div class="notice warning" style="margin-top:16px"><strong>تنبيه مالي</strong><p>نفّذ التراجع فقط بعد التأكد من استعادة أي مبلغ تم رده فعلياً للمشتري أو أصحاب الفرقيات. سيعود سجل البيعة إلى حالته السابقة قبل الإرجاع.</p></div>`,
+      footer: '<button class="secondary" data-close-modal>إلغاء</button><button class="primary" id="confirmUndoReversal">تأكيد التراجع وإعادة البيعة</button>',
+      onReady(root) {
+        root.querySelector('#confirmUndoReversal').addEventListener('click', () => {
+          const undoId = Store.uid('undo');
+          (reversal.refunds || []).forEach(item => addWalletTransaction({
+            walletId: item.walletId, direction: 'in', amount: num(item.walletAmount || item.amount),
+            description: `استعادة مبلغ من العميل بسبب التراجع عن ${label}: ${sale.item}`,
+            refType: 'sale_reversal_undo', refId: undoId
+          }));
+          (reversal.recoveries || []).forEach(item => addWalletTransaction({
+            walletId: item.walletId, direction: 'out', amount: num(item.walletAmount || item.amount),
+            description: item.recoveryType === 'delivery'
+              ? `إعادة تسوية شركة التوصيل بسبب التراجع عن ${label}: ${sale.item}`
+              : `إعادة تسوية البائع بسبب التراجع عن ${label}: ${sale.item}`,
+            refType: 'sale_reversal_undo', refId: undoId
+          }));
+
+          if (adjustment) {
+            adjustment.status = 'cancelled';
+            adjustment.cancelledAt = new Date().toISOString();
+            adjustment.cancelReason = `التراجع عن ${label}`;
+          }
+
+          sale.status = 'active';
+          sale.reversalId = '';
+          sale.reversedAt = '';
+          sale.restoredAt = new Date().toISOString();
+
+          if (Array.isArray(reversal.nettingSnapshots) && reversal.nettingSnapshots.length) {
+            restoreNettingSnapshots(reversal.nettingSnapshots);
+          } else if (num(reversal.nettingAmount) > 0) {
+            reversal.legacyNettingRestored = restoreLegacyNettingForReversal(sale, reversal.nettingAmount);
+          }
+
+          reversal.status = 'undone';
+          reversal.undoneAt = new Date().toISOString();
+          reversal.undoId = undoId;
+          persist(`تم التراجع عن ${label} وإعادة البيعة إلى حالتها السابقة`);
+          closeModal();
+          renderSessionDetails();
+        });
+      }
+    });
+  }
+
   function openReversalDetails(saleId) {
     const sale = getSale(saleId);
     const reversal = getReversalForSale(saleId);
-    if (!sale || !reversal) return toast('لا توجد تفاصيل عكس لهذه البيعة', 'error');
+    if (!sale || !reversal) return toast('لا توجد تفاصيل عكس فعالة لهذه البيعة', 'error');
     const refundTotal = round((reversal.refunds || []).reduce((sum, item) => sum + num(item.amount), 0));
     const recoveryTotal = round((reversal.recoveries || []).reduce((sum, item) => sum + num(item.amount), 0));
     modal({
@@ -2939,20 +3174,20 @@ tbody tr:hover { background: #fafcff; }
           <div class="list-row"><span>متبقٍ على المشتري بعد الإرجاع</span><strong>${money(reversal.outstandingBuyerCharge)}</strong></div>
           <div class="list-row"><span>تاريخ العملية</span><strong>${dateTimeText(reversal.date)}</strong></div>
         </div>`,
-      footer: '<button class="secondary" data-close-modal>إغلاق</button>'
+      footer: `<button class="secondary" data-close-modal>إغلاق</button><button class="primary" id="undoReversalBtn">التراجع عن ${sale.status === 'returned' ? 'الإرجاع' : 'الإلغاء'}</button>`,
+      onReady(root) {
+        root.querySelector('#undoReversalBtn').addEventListener('click', () => { closeModal(); undoSaleReversal(saleId); });
+      }
     });
   }
 
   function customerActivityStats(customerId) {
-    const related = sale => sale.sellerId === customerId
-      || sale.buyerId === customerId
-      || saleFarqiyas(sale).some(entry => entry.payerId === customerId);
     return {
       sellerSales: state.sales.filter(sale => isActiveSale(sale) && sale.sellerId === customerId).length,
       buyerPurchases: state.sales.filter(sale => isActiveSale(sale) && sale.buyerId === customerId).length,
       farqiyas: state.sales.filter(isActiveSale).reduce((count, sale) => count + saleFarqiyas(sale).filter(entry => entry.payerId === customerId).length, 0),
-      returns: state.sales.filter(sale => sale.status === 'returned' && related(sale)).length,
-      cancellations: state.sales.filter(sale => sale.status === 'cancelled' && related(sale)).length
+      returns: state.sales.filter(sale => sale.status === 'returned' && sale.buyerId === customerId).length,
+      cancellations: state.sales.filter(sale => sale.status === 'cancelled' && sale.buyerId === customerId).length
     };
   }
 
@@ -3008,8 +3243,8 @@ tbody tr:hover { background: #fafcff; }
           <div class="customer-stat"><span>${numberText(activity.sellerSales)}</span><small>بيعاته</small></div>
           <div class="customer-stat"><span>${numberText(activity.buyerPurchases)}</span><small>مشترياته</small></div>
           <div class="customer-stat"><span>${numberText(activity.farqiyas)}</span><small>فرقياته</small></div>
-          <div class="customer-stat return-stat"><span>${numberText(activity.returns)}</span><small>المرتجعات</small></div>
-          <div class="customer-stat cancel-stat"><span>${numberText(activity.cancellations)}</span><small>الإلغاءات</small></div>
+          <div class="customer-stat return-stat"><span>${numberText(activity.returns)}</span><small>مرتجعات مشترياته</small></div>
+          <div class="customer-stat cancel-stat"><span>${numberText(activity.cancellations)}</span><small>إلغاءات مشترياته</small></div>
         </div>
         <div class="customer-card-foot">
           <div class="customer-financial-snapshot">
@@ -3115,7 +3350,7 @@ tbody tr:hover { background: #fafcff; }
       if (buyerAmount) entries.push({ date: netting.date, label: 'مقاصة: تخفيض المبلغ المطلوب', debit: 0, credit: buyerAmount, session: '' });
       if (sellerAmount) entries.push({ date: netting.date, label: 'مقاصة: خصم من مستحق البائع', debit: sellerAmount, credit: 0, session: '' });
     });
-    state.saleReversals.forEach(reversal => {
+    state.saleReversals.filter(reversal => reversal.status !== 'undone').forEach(reversal => {
       const sale = getSale(reversal.saleId); if (!sale) return;
       const label = reversal.type === 'returned' ? 'إرجاع' : 'إلغاء';
       if (sale.buyerId === customerId) entries.push({ date: reversal.date, label: `${label} شراء: ${sale.item}`, debit: 0, credit: num(sale.buyerCharge), session: getSession(sale.sessionId)?.name || '' });
@@ -3253,7 +3488,7 @@ tbody tr:hover { background: #fafcff; }
     const sale = state.sales
       .filter(isActiveSale)
       .filter(item => customerDueForSale(item, customerId) > 0)
-      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0];
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
     return paymentWalletId(sale?.paymentMethod || 'bank');
   }
 
@@ -3282,13 +3517,25 @@ tbody tr:hover { background: #fafcff; }
   function openPaymentForm(kind, customerId) {
     const customer = getCustomer(customerId);
     const due = kind === 'buyer_collection' ? customerBuyerDue(customerId) : customerSellerDue(customerId);
+    const candidates = paymentAllocationCandidates(kind, customerId);
+    if (!customer || due <= 0 || !candidates.length) return toast('لا توجد مبالغ متاحة لهذه العملية', 'error');
     const defaultWallet = kind === 'buyer_collection' ? preferredCollectionWallet(customerId) : 'wallet_bank';
     modal({
       title: kind === 'buyer_collection' ? `تحصيل من ${customer.name}` : `تسوية للبائع ${customer.name}`,
-      small: true,
+      wide: true,
+      className: 'payment-allocation-modal',
       body: `<form id="paymentForm" class="form-grid">
-        <div class="field full"><div class="preview-box"><small>المبلغ الحالي</small><div class="metric-value">${money(due)}</div></div></div>
-        <div class="field full"><label>المبلغ</label><input name="amount" type="number" min="0.01" max="${due}" step="0.01" value="${due}" required /></div>
+        <div class="field full"><div class="grid grid-2 payment-total-grid">
+          <div class="preview-box"><small>إجمالي المستحق للعميل</small><div class="metric-value">${money(due)}</div></div>
+          <div class="preview-box selected-payment-box"><small>إجمالي العملية المحددة</small><div class="metric-value" id="selectedPaymentTotal">${money(candidates[0].due)}</div></div>
+        </div></div>
+        <div class="field full">
+          <div class="allocation-toolbar">
+            <div><label>حدد الجلسة والبيعة التي تخصها العملية</label><small class="help">تم اختيار أحدث عملية افتراضياً. يمكنك توزيع المبلغ على أكثر من بيعة يدوياً.</small></div>
+            <div class="actions"><button type="button" class="ghost compact" id="clearAllocations">تصفير</button><button type="button" class="secondary compact" id="fillAllAllocations">تحديد الكل</button></div>
+          </div>
+          <div class="payment-allocation-list">${paymentAllocationRows(candidates)}</div>
+        </div>
         <div class="field full"><label>${kind === 'buyer_collection' ? 'طريقة الدفع / محفظة الإيداع' : 'محفظة الدفع'}</label><select name="walletId" required>${walletOptions(defaultWallet)}</select></div>
         ${kind === 'buyer_collection' ? `<div class="field full"><div id="gatewayPaymentPreview" class="gateway-payment-preview hidden"><div><small>المبلغ المحصل</small><strong id="paymentGross">${money(0)}</strong></div><div><small>رسوم بوابة الدفع</small><strong id="paymentGatewayFee">${money(0)}</strong></div><div><small>صافي المضاف للمحفظة</small><strong id="paymentNet">${money(0)}</strong></div></div><small class="help">تُخصم رسوم البوابة من المبلغ المحصل، ولا تُحتسب ضمن أرباح المزاد.</small></div>` : ''}
         <div class="field full"><label>ملاحظة</label><input name="notes" placeholder="اختياري" /></div>
@@ -3296,41 +3543,54 @@ tbody tr:hover { background: #fafcff; }
       footer: '<button class="secondary" data-close-modal>إلغاء</button><button class="primary" id="savePayment">تأكيد العملية</button>',
       onReady(root) {
         const form = root.querySelector('#paymentForm');
+        const allocationInputs = [...root.querySelectorAll('.payment-allocation-amount')];
 
         function paymentPreview() {
+          const selected = readManualPaymentAllocations(root);
+          root.querySelector('#selectedPaymentTotal').textContent = money(selected.total);
           if (kind !== 'buyer_collection') return;
-          const amount = round(form.elements.amount.value);
           const walletId = form.elements.walletId.value;
-          const allocation = autoAllocate(kind, customerId, amount);
-          const feeAllocations = calculateGatewayFeeAllocations(allocation.allocations, customerId, walletId);
+          const feeAllocations = calculateGatewayFeeAllocations(selected.allocations, customerId, walletId);
           const fee = round(feeAllocations.reduce((sum, item) => sum + num(item.amount), 0));
-          const net = round(amount - fee);
+          const net = round(selected.total - fee);
           root.querySelector('#gatewayPaymentPreview').classList.toggle('hidden', walletId !== 'wallet_gateway' || fee <= 0);
-          root.querySelector('#paymentGross').textContent = money(amount);
+          root.querySelector('#paymentGross').textContent = money(selected.total);
           root.querySelector('#paymentGatewayFee').textContent = money(fee);
           root.querySelector('#paymentNet').textContent = money(net);
         }
 
-        form.elements.amount.addEventListener('input', paymentPreview);
+        allocationInputs.forEach(input => {
+          input.addEventListener('focus', () => input.select());
+          input.addEventListener('input', paymentPreview);
+        });
         form.elements.walletId.addEventListener('change', paymentPreview);
+        root.querySelector('#clearAllocations').addEventListener('click', () => {
+          allocationInputs.forEach(input => { input.value = 0; });
+          paymentPreview();
+        });
+        root.querySelector('#fillAllAllocations').addEventListener('click', () => {
+          allocationInputs.forEach(input => { input.value = input.max; });
+          paymentPreview();
+        });
         paymentPreview();
 
         root.querySelector('#savePayment').addEventListener('click', () => {
           if (!form.reportValidity()) return;
+          const selected = readManualPaymentAllocations(root);
+          if (selected.error) return toast(selected.error, 'error');
+          if (selected.total <= 0.001) return toast('حدد مبلغاً على جلسة أو بيعة واحدة على الأقل', 'error');
+          if (selected.total > due + 0.001) return toast('إجمالي المبالغ أكبر من المستحق', 'error');
           const fd = new FormData(form);
-          const amount = round(fd.get('amount'));
           const walletId = fd.get('walletId');
-          if (amount > due + 0.001) return toast('المبلغ أكبر من المستحق', 'error');
-          if (kind === 'seller_payout' && walletBalance(walletId) < amount) return toast('رصيد المحفظة غير كافٍ', 'error');
-          const allocation = autoAllocate(kind, customerId, amount);
-          if (allocation.remaining > 0.001) return toast('تعذر توزيع كامل المبلغ', 'error');
-          const gatewayFeeAllocations = kind === 'buyer_collection' ? calculateGatewayFeeAllocations(allocation.allocations, customerId, walletId) : [];
+          if (kind === 'seller_payout' && walletBalance(walletId) + 0.001 < selected.total) return toast('رصيد المحفظة غير كافٍ', 'error');
+          const gatewayFeeAllocations = kind === 'buyer_collection' ? calculateGatewayFeeAllocations(selected.allocations, customerId, walletId) : [];
           const gatewayFeeAmount = round(gatewayFeeAllocations.reduce((sum, item) => sum + num(item.amount), 0));
-          const walletAmount = kind === 'buyer_collection' ? round(amount - gatewayFeeAmount) : amount;
+          const walletAmount = kind === 'buyer_collection' ? round(selected.total - gatewayFeeAmount) : selected.total;
+          const sessions = [...new Set(selected.allocations.map(item => item.saleId ? getSession(getSale(item.saleId)?.sessionId)?.name : '').filter(Boolean))];
           const payment = {
-            id: Store.uid('pay'), kind, customerId, amount, walletAmount, walletId,
-            gatewayFeeAmount, gatewayFeeAllocations,
-            allocations: allocation.allocations,
+            id: Store.uid('pay'), kind, customerId, amount: selected.total, walletAmount, walletId,
+            gatewayFeeAmount, gatewayFeeAllocations, allocations: selected.allocations,
+            allocationMode: 'manual', sessions,
             notes: fd.get('notes').trim(), date: new Date().toISOString()
           };
           state.payments.push(payment);
@@ -3339,11 +3599,11 @@ tbody tr:hover { background: #fafcff; }
             direction: kind === 'buyer_collection' ? 'in' : 'out',
             amount: walletAmount,
             description: kind === 'buyer_collection'
-              ? `تحصيل من ${customer.name}${gatewayFeeAmount ? ` — صافي بعد رسوم بوابة ${money(gatewayFeeAmount)}` : ''}`
-              : `تسوية للبائع ${customer.name}`,
+              ? `تحصيل من ${customer.name}${sessions.length ? ` — ${sessions.join('، ')}` : ''}${gatewayFeeAmount ? ` — صافي بعد رسوم بوابة ${money(gatewayFeeAmount)}` : ''}`
+              : `تسوية للبائع ${customer.name}${sessions.length ? ` — ${sessions.join('، ')}` : ''}`,
             refType: 'payment', refId: payment.id
           });
-          persist(kind === 'buyer_collection' ? 'تم تسجيل التحصيل' : 'تمت تسوية مستحق البائع');
+          persist(kind === 'buyer_collection' ? 'تم تسجيل التحصيل على البيعات المحددة' : 'تمت تسوية البيعات المحددة للبائع');
           closeModal();
           renderSettlements();
         });
@@ -4016,7 +4276,7 @@ tbody tr:hover { background: #fafcff; }
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
       try {
-        const registration = await navigator.serviceWorker.register('./sw.js?v=13', { scope: './' });
+        const registration = await navigator.serviceWorker.register('./sw.js?v=14', { scope: './' });
         registrationRef = registration;
 
         if (registration.waiting && navigator.serviceWorker.controller) {

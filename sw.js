@@ -1,9 +1,9 @@
-const CACHE_NAME = 'auction-pwa-v13-rk-repo-path-fix';
+const CACHE_NAME = 'auction-pwa-v14-session-allocation-return-undo';
 
 const APP_SHELL = [
   './',
   './index.html',
-  './manifest.webmanifest?v=13',
+  './manifest.webmanifest?v=14',
   './icon/rk-icon-192-v12.png',
   './icon/rk-icon-512-v12.png',
   './icon/rk-apple-touch-v12.png',
@@ -23,7 +23,7 @@ self.addEventListener('install', event => {
           .filter(item => item.result.status === 'rejected');
 
         if (failed.length) {
-          console.warn('[PWA V13] Some optional files were not cached:', failed);
+          console.warn('[PWA V14] Some optional files were not cached:', failed);
         }
       })
       .then(() => self.skipWaiting())
